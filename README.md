@@ -1,4 +1,6 @@
-# wd-graph-tool
+# wd-graph
+
+This toolset is combining [graph-tool](https://graph-tool.skewed.de/) and [zerorpc](http://www.zerorpc.io/) to mimick a simple graph database.
 
 ## Transform
 Transform a Wikidata JSON Dump to a GraphTool Binary Graph.
@@ -11,7 +13,7 @@ optional arguments:
   --dump DUMP, -d DUMP  the wikidata dump to load (wikidata-*-all.json.bz2)
 ```
 
-This process does not run in parallel and takes up to multiple days.
+This process does not run in parallel and can take multiple days to complete.
 The whole graph will be build in memory. (~500GB)
 
 ## Server
