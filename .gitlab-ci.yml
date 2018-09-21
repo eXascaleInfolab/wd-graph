@@ -1,7 +1,0 @@
-image: registry.gitlab.ti.bfh.ch/lgm5/wd4science-docker:master
-
-build:
-  tags:
-  - large-memory
-  script:
-  - python3 creategraph-gt.py
