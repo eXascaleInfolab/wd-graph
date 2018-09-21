@@ -59,9 +59,10 @@ class wd(object):
 
     def deactivate_properties(self): 
         global universe
-        universe = deactivate_properties(universe)
+        success, universe = deactivate_properties(universe)
 
         print("✔ deactivated Property Nodes (e.g. P31)")
+        return success
 
 
     def get_filename(self):

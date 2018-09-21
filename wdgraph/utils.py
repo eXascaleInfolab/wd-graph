@@ -73,7 +73,7 @@ def deactivate_wmprojectpages(g, q2v, q = 14204246): # Wikimedia project page (Q
         wmpps = g.get_in_edges(wmpp)
 
         for e in wmpps:
-            print(">>>>>", g.vp.label[g.vertex(e[0])], "(Q", g.vp.q[g.vertex(e[0])] , ")")
+#            print(">>>>>", g.vp.label[g.vertex(e[0])], "(Q", g.vp.q[g.vertex(e[0])] , ")")
             wmprojectpages[g.vertex(e[0])] = False
             sc = 0
             if g.vp.q[g.vertex(e[0])] not in (5460604,):
@@ -87,12 +87,12 @@ def deactivate_wmprojectpages(g, q2v, q = 14204246): # Wikimedia project page (Q
                         
                     wmprojectpages[g.vertex(ee[0])] = False
                     
-            print("Total:", sc + 1)
+#            print("Total:", sc + 1)
 
         g.vertex_properties["wmprojectpages"] = wmprojectpages
             
-    return GraphView(g, vfilt=wmprojectpages)
+    return (True, GraphView(g, vfilt=wmprojectpages))
 
 
 def deactivate_properties(g):
-    return GraphView(g, vfilt=g.vp.item) 
+    return (True, GraphView(g, vfilt=g.vp.item))
