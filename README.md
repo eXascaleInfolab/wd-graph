@@ -1,11 +1,36 @@
 # wd-graph-tool
 
+## Transform
+Transform a Wikidata JSON Dump to a GraphTool Binary Graph.
+
+```
+usage: create.py [-h] [--dump DUMP]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --dump DUMP, -d DUMP  the wikidata dump to load (wikidata-*-all.json.bz2)
+```
+
+This process does not run in parallel and takes up to multiple days.
+The whole graph will be build in memory. (~500GB)
 
 ## Server
-You can start the server with 
+
+Start Wikidata Graph Server.
+
 ```
-    usage: wikidata-server.py [-h] [--endpoint ENDPOINT] [--graph GRAPH]
+usage: server.py [-h] [--endpoint ENDPOINT] [--graph GRAPH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --endpoint ENDPOINT, -e ENDPOINT
+                        the zmq endpoint to listen to (default
+                        ipc:///tmp/wikidata)
+  --graph GRAPH, -g GRAPH
+                        the graph to load
 ```
+
+The whole graph will be loaded into memory. (~500GB)
 
 ## Client
 
@@ -15,7 +40,7 @@ You can start the server with
 import zerorpc
 
 wd = zerorpc.Client(heartbeat=20, timeout=6000)
-wd.connect("ipc:///tmp/wikidata")
+wd.connect("ipc:///tmp/wikidata") //connect to the provided endpoint
 
 print(wd._zerorpc_inspect()) //check the available functions
 ```

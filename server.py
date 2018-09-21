@@ -2,10 +2,11 @@ import zerorpc
 from gevent import monkey; monkey.patch_all()
 from graph_tool.all import *;
 import argparse
+from wdgraph.utils import *;
 
 parser = argparse.ArgumentParser(description='Start Wikidata Graph Server.')
 parser.add_argument('--endpoint', '-e', default="ipc:///tmp/wikidata", help='the zmq endpoint to listen to (default ipc:///tmp/wikidata)')
-parser.add_argument('--graph', '-g', default="datasets/wikidata-20170424-all.json.bz2.universe.gt.bz2", help='the graph to load')
+parser.add_argument('--graph', '-g', default="datasets/SAMPLE.universe.gt.bz2", help='the graph to load')
 args = parser.parse_args()
 
 universe = 0
@@ -14,58 +15,32 @@ class wd(object):
     def __init__(self, filename):
         self.load(filename)
         self.unpack_id()
-        self.unpack_labels()
+
         self.deactivate_wmprojectpages()
+        self.deactivate_properties()
+
+        self.unpack_labels()
         self.build_pagerank()
     
     def load(self, filename):
         global universe
         self.filename = filename
         if not type(universe) == Graph:
-            universe = load_graph(filename)
+            self.full_universe = universe = load_graph(filename)
             print("✔ loaded ", filename)
         return True
 
     def unpack_id(self):
         if not hasattr(self, 'q2v'):
-            self.q2v = {}
-            self.p2v = {}
-            for v in universe.vertices():
-                if universe.vp.item[v]: #items => Q
-                    self.q2v[universe.vp.q[v]] = v
-                else: #property => P
-                    self.p2v[universe.vp.q[v]] = v
-
-            self.qq2e = {}
-            for e in universe.edges():
-                self.qq2e[universe.edge_index[e]] = e
+            self.q2v, self.p2v, self.qq2e = unpack_id(universe)
 
         print("✔ unpacked ids")
         return True
 
     def unpack_labels(self):
         if not hasattr(self, 'labels'):
-            # unpack label and aliases
-            self.labels = {}
-            # unpack english wikipedia titles
-            self.enwiki = {}
+            self.labels, self.Labels, self.enwiki = unpack_labels(universe)
 
-            for v in universe.vertices():
-                if universe.vp.label[v]:
-                    if universe.vp.label[v] in self.labels:
-                        self.labels[universe.vp.label[v]].append(v)
-                    else:
-                        self.labels[universe.vp.label[v]] = [v]
-
-                if universe.vp.aliases[v]:
-                    for alias in universe.vp.aliases[v]:
-                        if alias in self.labels:
-                            self.labels[alias].append(v)
-                        else:
-                            self.labels[alias] = [v]
-                            
-                if universe.vp.enwiki[v]:
-                    self.enwiki[universe.vp.enwiki[v]] = v
         print("✔ unpacked labels")
         return True
 
@@ -74,22 +49,43 @@ class wd(object):
         print("✔ build pagerank")
         return True
 
-    def get_filename:
+    def deactivate_wmprojectpages(self): 
+        global universe
+        success, universe = deactivate_wmprojectpages(universe, self.q2v)
+
+        if success:
+            print("✔ deactivated  WikiMedia Project Pages")
+        return success
+
+    def deactivate_properties(self): 
+        global universe
+        universe = deactivate_properties(universe)
+
+        print("✔ deactivated Property Nodes (e.g. P31)")
+
+
+    def get_filename(self):
         return self.filename
 
+    #provides query access
+    def queryf(self, func, args):
+        return eval(func)
+
+    #vertices streaming
     @zerorpc.stream
     def vertices(self):
         for v in universe.vertices():
             yield int(v)
-
+ 
+    #edges streamin
     @zerorpc.stream
     def edges(self):
         for e in universe.edges():
             yield int(e)
 
 
-    def get_out_edges(self, v):
-        return universe.get_out_edges(v).tolist()
+    def get_out_edges(self, vertex):
+        return universe.get_out_edges(vertex).tolist()
 
     def prop(self, name, vertex):
         if type(vertex) == 'list':
@@ -102,9 +98,6 @@ class wd(object):
             return list(map(lambda x: int(x), getattr(self,name)[key]))
         else:
             return int(attr)
-
-    def queryf(self, func, args):
-        return eval(func)
 
     def claims(self, vertex):
         p2v = self.p2v
@@ -182,28 +175,6 @@ class wd(object):
 
         return clean
 
-    #get two steps down the Wikimedia project page to disable all meta articles
-    def deactivate_wmprojectpages(self, q = 14204246): # Wikimedia project page (Q14204246)
-        q2v = self.q2v
-        deactivated = universe.new_vertex_property("bool", val=False) #create property for filtering
-        wmpp = q2v[q]
-        
-        # all instace of and subclass of Wikimedia project page
-        wmpps = universe.get_in_edges(wmpp)
-        
-        for e in wmpps:
-#            print(">>>>>", universe.vp.label[universe.vertex(e[0])], "(Q", universe.vp.q[universe.vertex(e[0])] , ")")
-            deactivated[universe.vertex(e[0])] = True
-            sc = 0
-            if universe.vp.q[universe.vertex(e[0])] not in (5460604, 30849):
-                for ee in universe.get_in_edges(e[0]):
-                    if sc < 10:
-                        sc = sc + 1
-#                        print(">>", universe.vp.label[universe.vertex(ee[0])])
-                    deactivated[universe.vertex(ee[0])] = True
-#            print("Total:", sc + 1)
-        universe.set_vertex_filter(deactivated, inverted=True)
-        print("✔ deactivated  WM Project Pages")
 
     def shortest_paths(self, source, target):
         universe.set_directed(False)
@@ -216,6 +187,7 @@ class wd(object):
             result.append(list(path))
 
         return result
+
 
 s = zerorpc.Server(wd(args.graph), heartbeat=None)
 s.debug = True
